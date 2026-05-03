@@ -16,7 +16,8 @@ Use this skill for every coding task, especially implementation, refactoring, de
 1. **Complexity is the number of paths**: Every branch multiplies the paths that must be understood, tested, and proven to match the intended business semantics. Do not add a branch unless its necessity is explicit.
 2. **Compatibility is debt**: Avoid adding code that is only compatible with existing systems or conventions without a clear business reason, as it increases complexity without providing value. Don't compatible-ize unless necessary for a specific business need.
 3. **Minimal Error Handling**: Catch only errors the code knows how to handle, and keep error recovery separate from ordinary business flow. Avoid adding error handling that hides unknown states or swallows errors without a clear recovery strategy. Don't log or catch errors everywhere.
-4. **Divide and Conquer**: When you need to solve a problem with multiple items, consider whether to solve it with a single path that iterates over the items, or with multiple paths that each handle one item. Don't add paths for each item unless there is a clear business reason to treat them separately.
+4. **Linear Flow First**: Prefer a straight-line process inside each function. If the process requires category-by-category discussion, extract that classification into a more specific function where each case can be handled linearly.
+5. **Divide and Conquer**: When you need to solve a problem with multiple items, consider whether to solve it with a single path that iterates over the items, or with multiple paths that each handle one item. Don't add paths for each item unless there is a clear business reason to treat them separately.
 
 ## Instructions
 
@@ -41,6 +42,7 @@ Use this skill for every coding task, especially implementation, refactoring, de
 4. Implement with the fewest necessary paths.
    - Prefer the smallest correct change.
    - Keep the main path straight and visible.
+   - Prefer linear flow inside each function; move classification and case-specific discussion behind a clearer function boundary.
    - Make necessary branches short, local, named when useful, and easy to test.
    - Avoid nested branches unless each nested decision has a clear independent semantic reason.
    - Do not add boolean or mode parameters unless each mode is a real business concept.
@@ -123,3 +125,11 @@ for-loops need to narrow the collection problem into a single item to be a singl
 ### General to Specific
 
 When handling a problem that has a general case and specific cases, consider whether the specific cases can be handled as part of the main path with conditional logic, or if they require separate paths. If the specific cases are just variations of the general case, they can often be handled in the same path with clear conditions. If they represent fundamentally different scenarios, they may warrant separate paths.
+
+## Linear Flow First
+
+Prefer a linear process inside each function. A reader should be able to follow the function as one general flow with only the necessary local decisions.
+
+When a function needs to discuss multiple categories, types, modes, or scenarios, treat that as a signal to divide the problem. Keep the caller focused on the general process, and extract the category-specific discussion into a more specific function where that narrower problem can be handled linearly.
+
+This follows General to Specific: the outer function describes the broad workflow, while inner functions handle the detailed cases. Do not make one function carry too many categories of flow at once.
