@@ -21,7 +21,7 @@ This repository provides a lightweight skill package that helps coding agents ke
 
 ```sh
 npx skills add zccz14/clean-code
-npx skills update zccz14/clean-code # to get the latest version
+npx skills update # to get the latest version
 ```
 
 ## Guiding Principles
