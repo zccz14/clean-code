@@ -49,26 +49,7 @@ Use this skill for every coding task, especially implementation, refactoring, de
    - Split code when one function is forced to manage unrelated paths.
    - Use data structure, table-driven dispatch, or polymorphism only when it reduces path reasoning.
 
-5. Keep errors visible, contextual, and simple.
-
-   Prefer ordinary exceptions over error-code return values such as `-1`, `null`, or `undefined` when representing failure. Throw `Error` instances with enough string information to debug the failure:
-   - Include an error category, such as `ValidationError`, `NetworkError`, or `ConfigError`.
-   - Include the relevant context values, such as IDs, parameters, status codes, or state names.
-   - Avoid throwing strings or constructing complex error objects with protocols such as `error.code`, `error.type`, or custom metadata unless the project already has a concrete, enforced contract for them.
-   - Avoid custom error classes unless they are required by an external API, framework integration, or existing project convention.
-   - Treat caught errors as `unknown`; do not assume they follow a local metadata shape.
-
-6. Catch errors only for one of four explicit responsibilities.
-
-   A `catch` is a branch and must have one of these meanings:
-   - Recover with a real fallback, such as cached data or a looser parser.
-   - Retry an operation that is expected to fail transiently.
-   - Add missing context and rethrow while preserving the original error with `cause` or an existing project helper.
-   - Present, report, or contain the error at a boundary such as API, GUI, CLI, worker, delegate, or error boundary code.
-
-   Do not catch only to log, ignore, translate without preserving the original error, or make the code look defensive. Log where the error is presented or reported, not at every layer. If wrapping is useful, prefer an existing helper such as `newError` or `scopeError`; otherwise use `new Error(message, { cause: error })` where supported.
-
-7. Review flow complexity before style.
+5. Review flow complexity before style.
 
    List findings by severity:
    - `blocker`: a new or existing path lacks sufficient business meaning, hides failure, or makes correctness hard to prove.
@@ -79,7 +60,7 @@ Use this skill for every coding task, especially implementation, refactoring, de
    - Why those paths are insufficiently justified or hard to reason about.
    - The concrete simplification: delete, merge, shorten, split, move, test, or clarify the branch.
 
-8. Report the complexity result for non-trivial changes.
+6. Report the complexity result for non-trivial changes.
 
    Include:
    - New paths added.
@@ -87,3 +68,18 @@ Use this skill for every coding task, especially implementation, refactoring, de
    - How the paths were kept local and verified.
 
    If no new paths were added, say so.
+
+## Error Handling
+
+Error throwing and catching are powerful tools that create new complexity paths, so they must be used with care.
+
+Error handling in `try-catch` always has exactly four valid choices.
+
+A `try-catch` is allowed only when the code can make one of these decisions:
+
+1.  **FALLBACK AVAILABLE**: It knows how to handle the failure: use a real fallback, such as cached data or a looser parser.
+2.  **RETRY IF ACCIDENTAL**: It believes the failure is accidental or transient: retry with a clear retry limit or policy.
+3.  **ENHANCE CONTEXT**: It can add missing context: wrap and rethrow while preserving the original stack with `cause` or an existing project helper.
+4.  **LOG AT BOUNDARY**: It cannot handle the failure locally: report or present the error, contain the blast radius, and notify external intervention at a boundary such as API, GUI, CLI, worker, delegate, or error boundary code.
+
+In every other case, never catch. Do not catch only to log, ignore, translate without preserving the original error, or make the code look defensive. Log where the error is presented or reported, not at every layer. If wrapping is useful, prefer an existing helper such as `newError` or `scopeError`; otherwise use `new Error(message, { cause: error })` where supported.
