@@ -69,7 +69,35 @@ Use this skill for every coding task, especially implementation, refactoring, de
 
    If no new paths were added, say so.
 
-## Error Handling
+## Compatibility is the source of Complexity
+
+Compatibility decides what inputs are valid and how the system should respond to them, which creates branches in the code. If we design for a specific set of inputs and behaviors, we can keep the code simple and focused. If we try to be more compatible with different inputs, edge cases, or failure modes, we add branches that increase complexity and make the code harder to understand and maintain. Therefore, compatibility is a form of technical debt that should only be taken on when there is a clear business need for it.
+
+AI agents can accidentally add compatibility paths but never have enough context to remove them, so they need to be guided to avoid adding unnecessary paths and to keep the main path clear.
+
+The strategy is to start with a minimal implementation that solves the problem for the most case, and only add branches when there is a clear business issue that requires them.
+
+## Modeling Error is the source of bug
+
+Codes represent real-world concepts, but never the real-world itself.
+
+Suppose we have a branch condition that checks if the real state is true. We can be wrong in two ways:
+
+- Type I Error (False Positive): The real state is true, but our code thinks it's false.
+- Type II Error (False Negative): The real state is false, but our code thinks it's true.
+
+We will never know what the real world is, so we don't know if our code is right or wrong. So we cannot eliminate these errors. So we cannot eliminate bugs.
+
+To think about the **probability and impact** of these errors.
+
+- High Probability: If the branch condition is based on a complex heuristic, an external system, or a new feature, it is more likely to be wrong.
+- High Impact: If the branch condition controls a critical business rule, a security check, or a costly operation, it is more likely to cause significant damage if it is wrong.
+
+Add code comments to explain the real-world assumptions before the code branches.
+
+If error is low probability and low impact, we can accept the risk of the branch being wrong, but we should still monitor it and be ready to fix it if it causes problems.
+
+## Error Handling (Runtime Exceptions)
 
 Error throwing and catching are powerful tools that create new complexity paths, so they must be used with care.
 
@@ -83,3 +111,15 @@ A `try-catch` is allowed only when the code can make one of these decisions:
 4.  **LOG AT BOUNDARY**: It cannot handle the failure locally: report or present the error, contain the blast radius, and notify external intervention at a boundary such as API, GUI, CLI, worker, delegate, or error boundary code.
 
 In every other case, never catch. Do not catch only to log, ignore, translate without preserving the original error, or make the code look defensive. Log where the error is presented or reported, not at every layer. If wrapping is useful, prefer an existing helper such as `newError` or `scopeError`; otherwise use `new Error(message, { cause: error })` where supported.
+
+## Divide and Conquer
+
+When you need to solve a problem with multiple items, consider whether to solve it with a single path that iterates over the items, or with multiple paths that each handle one item. Don't add paths for each item unless there is a clear business reason to treat them separately.
+
+### Collection to Element
+
+for-loops need to narrow the collection problem into a single item to be a single path. If the items are truly independent, they can be separate paths. If they are part of the same problem, they should be handled in a single path that iterates over them. This keeps the main path clear and avoids unnecessary branching.
+
+### General to Specific
+
+When handling a problem that has a general case and specific cases, consider whether the specific cases can be handled as part of the main path with conditional logic, or if they require separate paths. If the specific cases are just variations of the general case, they can often be handled in the same path with clear conditions. If they represent fundamentally different scenarios, they may warrant separate paths.
