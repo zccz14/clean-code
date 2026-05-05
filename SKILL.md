@@ -18,6 +18,8 @@ Use this skill for every coding task, especially implementation, refactoring, de
 3. **Minimal Error Handling**: Catch only errors the code knows how to handle, and keep error recovery separate from ordinary business flow. Avoid adding error handling that hides unknown states or swallows errors without a clear recovery strategy. Don't log or catch errors everywhere.
 4. **Linear Flow First**: Prefer a straight-line process inside each function. If the process requires category-by-category discussion, extract that classification into a more specific function where each case can be handled linearly.
 5. **Divide and Conquer**: When you need to solve a problem with multiple items, consider whether to solve it with a single path that iterates over the items, or with multiple paths that each handle one item. Don't add paths for each item unless there is a clear business reason to treat them separately.
+6. **Compatibility must be collectable**: Every compatibility path needs an owner, a reason, and a release condition. If future cleanup cannot be judged, the compatibility design is leaking complexity.
+7. **Minimize object compatibility surface**: Prefer procedural and functional code by default. Avoid classes, inheritance, mutable instance state, and public object members unless they reduce path reasoning or are required by a concrete boundary.
 
 ## Instructions
 
@@ -37,7 +39,12 @@ Use this skill for every coding task, especially implementation, refactoring, de
    - Can this path be deleted, merged, shortened, or moved behind a clearer boundary?
    - How will this path be verified by tests, existing behavior, or explicit reasoning?
 
-   If a branch lacks a sufficient reason, treat it as a defect. Do not normalize it as style, preference, or harmless flexibility.
+   If the path exists for compatibility, also require:
+   - Who or what depends on this compatibility behavior?
+   - What condition allows this path to be removed?
+   - How can future humans or AI agents verify that removal is safe?
+
+   If a branch lacks a sufficient reason, treat it as a defect. Do not normalize it as style, preference, or harmless flexibility. If a compatibility path has no owner, no observable dependency, or no release condition, treat it as leaking complexity and do not add it.
 
 4. Implement with the fewest necessary paths.
    - Prefer the smallest correct change.
@@ -50,6 +57,10 @@ Use this skill for every coding task, especially implementation, refactoring, de
    - Catch only errors the code knows how to handle, and keep error recovery separate from ordinary business flow.
    - Split code when one function is forced to manage unrelated paths.
    - Use data structure, table-driven dispatch, or polymorphism only when it reduces path reasoning.
+   - Prefer procedural or functional code when it keeps dependencies explicit, flow local, and compatibility surfaces small.
+   - Do not introduce a class, inheritance hierarchy, mutable instance state, or public object API only to reduce parameter count or prepare for future extension.
+   - Prefer explicit parameters over hidden object state. If the language supports named parameters, prefer named parameters for readability and mistake prevention.
+   - Treat every public field, method, override hook, fallback, flag, migration path, and compatibility API as a compatibility commitment that needs a release condition.
 
 5. Review flow complexity before style.
 
@@ -67,9 +78,11 @@ Use this skill for every coding task, especially implementation, refactoring, de
    Include:
    - New paths added.
    - Why each path is necessary.
+   - Whether any path exists for compatibility.
+   - For each compatibility path, its owner, dependency, release condition, and safe-removal verification.
    - How the paths were kept local and verified.
 
-   If no new paths were added, say so.
+   If no new paths were added, say so. If no compatibility path was added, say so.
 
 ## Compatibility is the source of Complexity
 
@@ -78,6 +91,41 @@ Compatibility decides what inputs are valid and how the system should respond to
 AI agents can accidentally add compatibility paths but never have enough context to remove them, so they need to be guided to avoid adding unnecessary paths and to keep the main path clear.
 
 The strategy is to start with a minimal implementation that solves the problem for the most case, and only add branches when there is a clear business issue that requires them.
+
+## Compatibility Must Be Collectable
+
+Compatibility is like memory allocation: every compatibility path allocates complexity, and every allocation needs a release condition. Compatibility is not garbage-collected automatically; it must be designed so humans and AI agents can later judge whether it is safe to remove.
+
+Do not add compatibility behavior unless its lifetime is clear. A compatibility path should document:
+- Why it exists.
+- Who or what depends on it.
+- The condition that allows it to be removed.
+- How to verify that removal is safe.
+
+If a compatibility path has no clear owner, no observable dependency, or no release condition, treat it as a leak. Avoid designing APIs, object models, flags, fallbacks, migrations, or public members that cannot be judged collectable later.
+
+Good compatibility design makes cleanup possible. Bad compatibility design creates permanent residue.
+
+## Minimize Object Compatibility Surface
+
+Avoid object-oriented design by default, especially public mutable object models, inheritance, and override-based behavior. Classes turn every public field and method into a compatibility surface. Once exposed, AI agents and humans both have difficulty proving whether each public member must remain compatible, so classes tend to accumulate compatibility debt and cause complexity to grow explosively.
+
+Prefer procedural or functional design unless object-oriented modeling is required by the language, framework, external API, persisted data model, or an explicit business need. The goal is not to follow a paradigm, but to keep dependencies explicit, flows local, and compatibility surfaces small.
+
+| Style | Prefer when | Avoid when | Complexity risk |
+| --- | --- | --- | --- |
+| Procedural | The task is a clear sequence of operations with explicit inputs and outputs. | It relies on global state, hidden initialization order, or long functions that mix unrelated workflows. | Can become a large implicit state machine if shared state is not controlled. |
+| Functional | The logic can be expressed as pure transformations, validation, calculation, or data mapping. | It becomes point-free, overly abstract, deeply nested, or hides control flow behind generic combinators. | Can hide paths behind higher-order abstractions and make debugging indirect. |
+| Object-oriented | The language, framework, external API, persisted model, or business domain requires stable object boundaries. | It is introduced only to reduce parameter count, prepare for future extension, or create broad public APIs. | Public members, inheritance, mutable instance state, and overrides create compatibility surfaces and hidden paths. |
+
+Do not treat many parameters as a reason to introduce an object or class. In AI-assisted programming, passing explicit parameters is acceptable because the cost of writing and updating call sites is much lower than the cost of maintaining an unclear compatibility surface. If the language supports named parameters, prefer named parameters for readability and mistake prevention.
+
+When object-oriented code is necessary, keep it narrow:
+- Minimize public fields and methods.
+- Prefer composition over inheritance.
+- Avoid mutable instance state when plain data can be passed explicitly.
+- Avoid override hooks unless the extension point is a real business requirement.
+- Treat every public member as a compatibility commitment.
 
 ## Modeling Error is the source of bug
 
