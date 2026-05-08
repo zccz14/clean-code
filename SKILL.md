@@ -96,11 +96,15 @@ The strategy is to start with a minimal implementation that solves the problem f
 
 Compatibility is like memory allocation: every compatibility path allocates complexity, and every allocation needs a release condition. Compatibility is not garbage-collected automatically; it must be designed so humans and AI agents can later judge whether it is safe to remove.
 
-Do not add compatibility behavior unless its lifetime is clear. A compatibility path should document:
-- Why it exists.
-- Who or what depends on it.
-- The condition that allows it to be removed.
-- How to verify that removal is safe.
+Do not add compatibility behavior unless its lifetime is clear. A compatibility path should document what code cannot express: who depends on the compatibility behavior, what condition allows it to be removed, and how future maintainers can verify that removal is safe.
+
+Use a `COMPATIBILITY` comment next to compatibility branches when the removal condition is not obvious from code:
+
+```ts
+// COMPATIBILITY: Mobile clients before 4.8 send `user_id`.
+// Remove when mobile <4.8 traffic stays below 1% for 30 days.
+const userId = body.userId ?? body.user_id;
+```
 
 If a compatibility path has no clear owner, no observable dependency, or no release condition, treat it as a leak. Avoid designing APIs, object models, flags, fallbacks, migrations, or public members that cannot be judged collectable later.
 
@@ -129,23 +133,55 @@ When object-oriented code is necessary, keep it narrow:
 
 ## Modeling Error is the source of bug
 
-Codes represent real-world concepts, but never the real-world itself.
+Code represents real-world concepts, but never the real world itself.
 
-Suppose we have a branch condition that checks if the real state is true. We can be wrong in two ways:
+Suppose we have a branch condition that checks a real-world state. The code can be wrong by accepting, granting, matching, or allowing something it should not, or by rejecting, denying, missing, or blocking something it should allow. If the code fully knew how to classify the real world, the modeling error would not exist. For modeling errors that cannot be eliminated, reason about whether the system remains safe and recoverable when the approximation is wrong.
 
-- Type I Error (False Positive): The real state is true, but our code thinks it's false.
-- Type II Error (False Negative): The real state is false, but our code thinks it's true.
-
-We will never know what the real world is, so we don't know if our code is right or wrong. So we cannot eliminate these errors. So we cannot eliminate bugs.
-
-To think about the **probability and impact** of these errors.
+Think about the **probability and impact** of these errors.
 
 - High Probability: If the branch condition is based on a complex heuristic, an external system, or a new feature, it is more likely to be wrong.
 - High Impact: If the branch condition controls a critical business rule, a security check, or a costly operation, it is more likely to cause significant damage if it is wrong.
 
-Add code comments to explain the real-world assumptions before the code branches.
+Use an `ASSUMPTION` comment before fuzzy or approximate branches. The comment must be self-contained: name the real-world state being approximated, then explain how the system remains safe if the branch is wrong in either direction. Prefer behavior words from the domain over abstract terms like false positive or false negative.
+
+```ts
+// ASSUMPTION: Treat a matching email domain as a weak signal that the user may
+// belong to this organization.
+// If this accepts the wrong user: they only see the join request screen and
+// cannot access organization data until an admin approves.
+// If this rejects the right user: they can still request an invite manually.
+if (email.endsWith(companyDomain)) {
+  showJoinRequest();
+}
+```
+
+```ts
+// ASSUMPTION: Treat a recent successful payment as enough evidence that the
+// subscription is active while billing webhooks may be delayed.
+// If this grants access incorrectly: access is limited to the current billing
+// period and the next webhook or reconciliation job will revoke it.
+// If this denies access incorrectly: the user can retry after webhook sync or
+// contact support; no billing state is mutated here.
+if (lastPayment.status === "succeeded") {
+  allowAccess();
+}
+```
+
+If the comment cannot explain why the system remains safe or recoverable when the approximation is wrong, treat the branch as a possible bug or vulnerability. Do not use comments to paper over that risk; reduce permission, add verification, move the decision behind a clearer boundary, or make the failure mode explicit.
 
 If error is low probability and low impact, we can accept the risk of the branch being wrong, but we should still monitor it and be ready to fix it if it causes problems.
+
+## Code Comment Policy
+
+Comments should cover facts the code cannot prove by itself. Do not comment ordinary straight-line code, obvious assignments, or behavior that names and tests can express.
+
+Use comments mainly for:
+- `COMPATIBILITY`: a compatibility branch whose safe removal condition is not expressible in code.
+- `ASSUMPTION`: a fuzzy or approximate real-world model where the system must remain safe if the approximation is wrong.
+- `RECOVERY`: an error-handling path that uses a real fallback, bounded retry, context-preserving rethrow, or boundary-level report.
+- `INVARIANT`: a local dependency on a fact that is enforced elsewhere and cannot be proven at the current site.
+
+If a comment is needed only to explain what the code does, simplify or rename the code instead. If a long comment is needed to justify a branch, first try to delete, merge, shorten, split, move, test, or clarify that branch.
 
 ## Error Handling (Runtime Exceptions)
 
